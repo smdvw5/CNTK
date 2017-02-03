@@ -118,6 +118,8 @@
 %template() std::vector<std::shared_ptr<CNTK::Learner>>;
 %template() std::vector<std::shared_ptr<CNTK::DistributedLearner>>;
 %template() std::vector<std::shared_ptr<CNTK::Trainer>>;
+%template() std::vector<std::shared_ptr<CNTK::ProgressWriter>>;
+%template() std::pair<double, double>;
 %template() std::pair<size_t, double>;
 %template() std::pair<size_t, size_t>;
 %template() std::pair<size_t, int>;
@@ -601,6 +603,8 @@ public:
 %feature("nodirector") CNTK::TrainingSession::OnMinibatchStart;
 %feature("nodirector") CNTK::TrainingSession::OnCheckpointStart;
 %feature("nodirector") CNTK::TrainingSession::GetMinibatchSize;
+
+%feature("director") CNTK::ProgressWriter;
 
 //
 // NDShape
@@ -1290,7 +1294,6 @@ std::unordered_map<CNTK::StreamInformation, std::pair<CNTK::NDArrayViewPtr, CNTK
 %shared_ptr(CNTK::IDictionarySerializable)
 %shared_ptr(CNTK::Trainer)
 %shared_ptr(CNTK::TrainingSession)
-%shared_ptr(CNTK::BasicTrainingSession)
 %shared_ptr(CNTK::Function)
 %shared_ptr(CNTK::NDArrayView)
 %shared_ptr(CNTK::Value)
@@ -1302,6 +1305,7 @@ std::unordered_map<CNTK::StreamInformation, std::pair<CNTK::NDArrayViewPtr, CNTK
 %shared_ptr(CNTK::QuantizedDistributedCommunicator)
 %shared_ptr(CNTK::DistributedLearner)
 %shared_ptr(CNTK::Internal::TensorBoardFileWriter)
+%shared_ptr(CNTK::ProgressWriter)
 
 %include "CNTKLibraryInternals.h"
 %include "CNTKLibrary.h"
@@ -1310,18 +1314,21 @@ std::unordered_map<CNTK::StreamInformation, std::pair<CNTK::NDArrayViewPtr, CNTK
    // Trainer initializers.
    // Because SWIG cannot properly handle smart pointers to derived classes (causes memory leak during the check for distributed learners),
    // we need to redefine CreateTrainer.
-    CNTK::TrainerPtr TrainerImpl(const ::CNTK::FunctionPtr& model, const ::CNTK::FunctionPtr& lossFunction, const ::CNTK::FunctionPtr& evaluationFunction, const std::vector<CNTK::DistributedLearnerPtr>& parameterLearners)
+   // TODO: do progressWriters below also have a similar issue?
+    CNTK::TrainerPtr TrainerImpl(const ::CNTK::FunctionPtr& model, const ::CNTK::FunctionPtr& lossFunction, const ::CNTK::FunctionPtr& evaluationFunction,
+                                 const std::vector<CNTK::DistributedLearnerPtr>& parameterLearners, const std::vector<CNTK::ProgressWriterPtr>& progressWriters)
     {
         std::vector<LearnerPtr> learners;
         learners.reserve(parameterLearners.size());
         for(const auto& l : parameterLearners)
             learners.push_back(l);
-        return CreateTrainer(model, lossFunction, evaluationFunction, learners);
+        return CreateTrainer(model, lossFunction, evaluationFunction, learners, progressWriters);
     }
 
-    CNTK::TrainerPtr TrainerImpl(const ::CNTK::FunctionPtr& model, const ::CNTK::FunctionPtr& lossFunction, const ::CNTK::FunctionPtr& evaluationFunction, const std::vector<CNTK::LearnerPtr>& parameterLearners)
+    CNTK::TrainerPtr TrainerImpl(const ::CNTK::FunctionPtr& model, const ::CNTK::FunctionPtr& lossFunction, const ::CNTK::FunctionPtr& evaluationFunction,
+                                 const std::vector<CNTK::LearnerPtr>& parameterLearners, const std::vector<CNTK::ProgressWriterPtr>& progressWriters)
     {
-        return CreateTrainer(model, lossFunction, evaluationFunction, parameterLearners);
+        return CreateTrainer(model, lossFunction, evaluationFunction, parameterLearners, progressWriters);
     }
 
     // Global rank of current worker
