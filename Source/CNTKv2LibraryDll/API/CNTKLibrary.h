@@ -4571,7 +4571,7 @@ namespace CNTK
             size_t frequency;
             size_t currentIndex;
             size_t sampleCountWhenLastCalled;
-            std::function<void(size_t currentIndex, const DeviceDescriptor&)> action;
+            std::function<bool(size_t currentIndex, const DeviceDescriptor&)> action;
         };
 
     public:
@@ -4656,8 +4656,12 @@ namespace CNTK
 
         ///
         /// Optionally overridable callback that is invoked after each cross validation.
+        /// If return value is false, the training will be stopped.
         ///
-        CNTK_API virtual void OnCrossValidationEnd(size_t /*validationIndex*/, double /*averageError*/, size_t /*numberOfSamples*/, size_t /*numberOfMinibatches*/) {};
+        CNTK_API virtual bool OnCrossValidationEnd(size_t /*validationIndex*/, double /*averageError*/, size_t /*numberOfSamples*/, size_t /*numberOfMinibatches*/)
+        {
+            return true;
+        }
 
         ///
         /// Optionally overridable callback that is invoked with progress frequency.
@@ -4685,7 +4689,7 @@ namespace CNTK
         void SaveCheckpoint(size_t currentIndex);
         void SaveFinalCheckpoint();
 
-        void CrossValidate(size_t currentIndex, const DeviceDescriptor& computeDevice);
+        bool CrossValidate(size_t currentIndex, const DeviceDescriptor& computeDevice);
         void ReportProgress(size_t currentIndex);
 
         // Checkpointing
