@@ -340,7 +340,8 @@ bool ReaderShim<ElemType>::GetMinibatch(StreamMinibatchInputs& matrices)
         // When the network requests a new minibatch, we wait for the current async to finish, swap the buffers
         // and kick off the new prefetch.
         auto localCurrentDataTransferIndex = m_currentDataTransferIndex;
-        m_prefetchTask = std::async(m_launchType, [this, localCurrentDataTransferIndex]() { return PrefetchMinibatch(localCurrentDataTransferIndex); });
+        //m_prefetchTask = std::async(m_launchType, [this, localCurrentDataTransferIndex]() { return PrefetchMinibatch(localCurrentDataTransferIndex); });
+        m_prefetchTask = m_workQueue.submit<PrefetchResult>([this, localCurrentDataTransferIndex]() { return PrefetchMinibatch(localCurrentDataTransferIndex); });
     }
 
     ProfilerTimeEnd(profLaunchAsync, m_currentDataTransferIndex ? "Launch Async 1" : "Launch Async 0");
