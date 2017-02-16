@@ -18,7 +18,8 @@ namespace CNTKLibraryCSEvalExamples
 
             CNTKLibraryManagedExamples.EvaluationSingleImage(DeviceDescriptor.CPUDevice);
             CNTKLibraryManagedExamples.EvaluationBatchOfImages(DeviceDescriptor.CPUDevice);
-            
+            CNTKLibraryManagedExamples.EvaluationSingleSequenceUsingOneHot(DeviceDescriptor.CPUDevice);
+
             Console.WriteLine("======== Evaluation completes. ========");
         }
     }

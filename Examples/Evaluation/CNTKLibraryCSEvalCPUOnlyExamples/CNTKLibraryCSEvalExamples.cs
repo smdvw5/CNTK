@@ -26,15 +26,19 @@ namespace CNTKLibraryCSEvalExamples
         //
         public static void EvaluationSingleImage(DeviceDescriptor device)
         {
-            const string outputName = "Plus2060";
             var inputDataMap = new Dictionary<Variable, Value>();
 
             // Load the model.
-            Function modelFunc = Function.LoadModel("z.model", device);
+            // The model resnet20.dnn is trained by <CNTK>/Examples/Image/Classification/ResNet/Python/Models/TrainResNet_CIFAR10.py
+            // Please see README.md in <CNTK>/Examples/Image/Classification/ResNet about how to train the model.
+            string modelFilePath = "resnet20.dnn";
+            ThrowIfFileNotExist(modelFilePath, string.Format("Error: The model '{0}' does not exist. Please follow instructions in README.md in <CNTK>/Examples/Image/Classification/ResNet to create the model.", modelFilePath));
+            Function modelFunc = Function.LoadModel(modelFilePath, device);
 
             // Get output variable based on name
-            Variable outputVar = modelFunc.Outputs.Where(variable => string.Equals(variable.Name, outputName)).Single();
- 
+            // Variable outputVar = modelFunc.Outputs.Where(variable => string.Equals(variable.Name, outputName)).Single();
+            Variable outputVar = modelFunc.Output;
+
             // Get input variable. The model has only one single input.
             // The same way described above for output variable can be used here to get input variable by name.
             Variable inputVar = modelFunc.Arguments.Single();
@@ -85,14 +89,17 @@ namespace CNTKLibraryCSEvalExamples
         //
         public static void EvaluationBatchOfImages(DeviceDescriptor device)
         {
-            const string outputName = "Plus2060";
             var inputDataMap = new Dictionary<Variable, Value>();
 
             // Load the model.
-            Function modelFunc = Function.LoadModel("z.model", device);
+            // The model resnet20.dnn is trained by <CNTK>/Examples/Image/Classification/ResNet/Python/Models/TrainResNet_CIFAR10.py
+            // Please see README.md in <CNTK>/Examples/Image/Classification/ResNet about how to train the model.
+            string modelFilePath = "resnet20.dnn";
+            ThrowIfFileNotExist(modelFilePath, string.Format("Error: The model '{0}' does not exist. Please follow instructions in README.md in <CNTK>/Examples/Image/Classification/ResNet to create the model.", modelFilePath));
+            Function modelFunc = Function.LoadModel(modelFilePath, device);
 
             // Get output variable based on name
-            Variable outputVar = modelFunc.Outputs.Where(variable => string.Equals(variable.Name, outputName)).Single();
+            Variable outputVar = modelFunc.Output;
 
             // Get input variable. The model has only one single input.
             // The same way described above for output variable can be used here to get input variable by name.
@@ -157,16 +164,23 @@ namespace CNTKLibraryCSEvalExamples
         //
         public static void EvaluationSingleSequenceUsingOneHot(DeviceDescriptor device)
         {
-            var vocabToIndex = buildVocabIndex("ATIS.vocab");
-            var indexToVocab = buildInvVocabIndex("ATIS.label");
+            // The model atis.dnn is trained by <CNTK>/Examples/LanguageUnderstanding/ATIS/Python/LanguageUnderstanding.py
+            // Please see README.md in <CNTK>/Examples/LanguageUnderstanding/ATIS about how to train the model.
+            string modelFilePath = "atis.dnn";
+            ThrowIfFileNotExist(modelFilePath, string.Format("Error: The model '{0}' does not exist. Please follow instructions in README.md in <CNTK>/Examples/LanguageUnderstanding/ATIS to create the model.", modelFilePath));
+            Function myFunc = Function.LoadModel(modelFilePath, device);
 
-            Function myFunc = Function.LoadModel("atis.model", device);
+            string vocabFile = "ATIS.vocab";
+            string labelFile = "ATIS.label";
+            ThrowIfFileNotExist(vocabFile, string.Format("Error: The file '{0}' does not exist. Please copy it from <CNTK>/Examples/LanguageUnderstanding/ATIS/Data to the output directory.", vocabFile));
+            ThrowIfFileNotExist(labelFile, string.Format("Error: The file '{0}' does not exist. Please copy it from <CNTK>/Examples/LanguageUnderstanding/ATIS/Data to the output directory.", labelFile));
+            var vocabToIndex = buildVocabIndex(vocabFile);
+            var indexToVocab = buildInvVocabIndex(labelFile);
 
             Console.WriteLine("Evaluate single sequence using one-hot vector");
 
-            // Get input variable 
-            const string inputName = "features";
-            var inputVar = myFunc.Arguments.Where(variable => string.Equals(variable.Name, inputName)).Single();
+            // Get input variable
+            var inputVar = myFunc.Arguments.Single();
 
             uint vocabSize = inputVar.Shape.TotalSize;
 
@@ -194,8 +208,7 @@ namespace CNTKLibraryCSEvalExamples
             inputDataMap.Add(inputVar, inputValue);
 
             // Prepare output
-            const string outputName = "out.z";
-            Variable outputVar = myFunc.Outputs.Where(variable => string.Equals(variable.Name, outputName)).Single();
+            Variable outputVar = myFunc.Output;
 
             // Create ouput data map. Using null as Value to indicate using system allocated memory.
             var outputDataMap = new Dictionary<Variable, Value>();
@@ -237,10 +250,18 @@ namespace CNTKLibraryCSEvalExamples
         //
         public static void EvaluationBatchOfSequencesUsingOneHot(DeviceDescriptor device)
         {
-            var vocabToIndex = buildVocabIndex("ATIS.vocab");
-            var indexToVocab = buildInvVocabIndex("ATIS.label");
+            // The model atis.dnn is trained by <CNTK>/Examples/LanguageUnderstanding/ATIS/Python/LanguageUnderstanding.py
+            // Please see README.md in <CNTK>/Examples/LanguageUnderstanding/ATIS about how to train the model.
+            string modelFilePath = "atis.dnn";
+            ThrowIfFileNotExist(modelFilePath, string.Format("Error: The model '{0}' does not exist. Please follow instructions in README.md in <CNTK>/Examples/LanguageUnderstanding/ATIS to create the model.", modelFilePath));
+            Function myFunc = Function.LoadModel(modelFilePath, device);
 
-            Function myFunc = Function.LoadModel("atis.model", device);
+            string vocabFile = "ATIS.vocab";
+            string labelFile = "ATIS.label";
+            ThrowIfFileNotExist(vocabFile, string.Format("Error: The file '{0}' does not exist. Please copy it from <CNTK>/Examples/LanguageUnderstanding/ATIS/Data to the output directory.", vocabFile));
+            ThrowIfFileNotExist(labelFile, string.Format("Error: The file '{0}' does not exist. Please copy it from <CNTK>/Examples/LanguageUnderstanding/ATIS/Data to the output directory.", labelFile));
+            var vocabToIndex = buildVocabIndex(vocabFile);
+            var indexToVocab = buildInvVocabIndex(labelFile);
 
             Console.WriteLine("Evaluate batch of sequences with variable length using one-hot vector");
 
@@ -320,6 +341,22 @@ namespace CNTKLibraryCSEvalExamples
             }
         }
 
+        /// <summary>
+        /// Checks whether the file exists. If not, write the error message on the console and throw FileNotFoundException.
+        /// </summary>
+        /// <param name="filePath">The file to check.</param>
+        /// <param name="errorMsg">The message to write on console if the file does not exist.</param>
+        private static void ThrowIfFileNotExist(string filePath, string errorMsg)
+        {
+            if (!File.Exists(filePath))
+            {
+                if (!string.IsNullOrEmpty(errorMsg))
+                {
+                    Console.WriteLine(errorMsg);
+                }
+                throw new FileNotFoundException(string.Format("File '{0}' not found.", filePath));
+            }
+        }
         private static void PrintOutput<T>(uint sampleSize, List<List<T>> outputBuffer)
         {
             Console.WriteLine("The number of sequences in the batch: " + outputBuffer.Count);
