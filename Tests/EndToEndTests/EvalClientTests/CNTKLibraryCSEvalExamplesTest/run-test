@@ -28,6 +28,7 @@ DataDir=$TEST_ROOT_DIR/../../Examples/Image/DataSets/CIFAR-10
 cp $DataSourceDir/CIFAR/v0/cifar-10-batches-py/*.txt $DataDir || exit $?
 cp $DataSourceDir/CIFAR/v0/cifar-10-batches-py/*.xml $DataDir || exit $?
 
+#$(python -c "import sys; print(sys.version_info[0])") --ExecutePreprocessor.timeout=1200 --output \$(basename \$f .ipynb)-out.ipynb \$f
 
 [ -f $ScriptDir/Models/resnet20_0.dnn ] || exit 1
 python TrainResNet_CIFAR10.py -e 1 || exit $?
