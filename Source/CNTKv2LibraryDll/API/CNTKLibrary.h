@@ -4392,6 +4392,7 @@ namespace CNTK
     public:
         DictionaryValue AsDictionaryValue() const { return DictionaryValue(m_config); }
         DictionaryValue operator[](const std::wstring& key) const { return m_config[key]; }
+        virtual ~Record() {}
     };
 
     /// 

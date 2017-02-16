@@ -241,7 +241,7 @@ def dynamic_axes(self):
         {
             delete cpuView;
         }
-
+		
         return ndarray;
     }
 }

@@ -243,7 +243,7 @@ def _py_dict_to_cntk_dict(py_dict):
         # TODO: add support to list of lists ?
         elif isinstance(v, list):
             res[k] = cntk_py.DictionaryValue([
-                cntk_py.DictionaryValueFromDict(_py_dict_to_cntk_dict(e)) 
+                cntk_py.DictionaryValueFromDict(_py_dict_to_cntk_dict(e))
                 if isinstance(e, dict) else e.as_dictionary_value() for e in v])
         else:
             res[k] = cntk_py.DictionaryValue(v)
@@ -509,28 +509,26 @@ def CTFDeserializer(filename, streams):
 def HTKDeserializers(label_mapping_file, streams):
     '''
     Configures the HTK reader that reads speech data in HTK format.
-    
+
     Args:
         label_mapping_file (str): path to the label mapping file
-        streams: any dictionary-like object that contains a mapping from stream names 
-            to StreamDef objects. Each StreamDef object configures an HTK deserializer.
+        streams: any dictionary-like object that contains a mapping from stream names
+            to :class:`StreamDef` objects. Each StreamDef object configures an HTK deserializer.
             If a stream name starts with "label" an HTKMLFDeserializer is used,
             otherwise an HTKFeatureDeserializer is used.
     '''
     feat = []
     mlf = []
-    for stream_name in streams:
-        s = streams[stream_name]
-        dimension = s.dim
+    for stream_name, stream in streams.items():
+        dimension = stream.dim
         if stream_name.startswith("label"):
-            mlf_file = s.stream_alias
-            mlf.append(cntk_py.Deserializer_htkmlfdeserializer(stream_name, label_mapping_file, dimension, [mlf_file]))
+            files = tuple(stream.stream_alias)
+            label_mapping_file, master_label_files = files[0], files[1:]
+            mlf.append(cntk_py.Deserializer_htkmlfdeserializer(stream_name, label_mapping_file, dimension, master_label_files))
         else:
-            s = streams[stream_name]
-            scp_file = s.stream_alias
-            dimension = s.dim
-            left_context, right_context = s.context if 'context' in s else (1,1) 
-            prefix_path = s.paths[0] if 'paths' in s else '' 
+            scp_file = stream.stream_alias
+            left_context, right_context = stream.context if 'context' in stream else (0,0)
+            prefix_path = stream.paths[0] if 'paths' in stream else ''
             feat.append(cntk_py.Deserializer_htkfeature_deserializer(stream_name, scp_file, dimension, left_context, right_context, prefix_path))
     if len(mlf) == 0:
         raise ValueError("no label streams found")
@@ -562,7 +560,22 @@ class StreamConfiguration(cntk_py.StreamConfiguration):
 # returns a record { stream_alias, is_sparse, optional dim, optional transforms }
 from cntk.utils import Record
 def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None, paths=None):
-    # note: the names used inside here are required by the C++ code which looks them up in a dictionary
+    '''
+       Configuration of a stream for use with the builtin Deserializers.
+       The meanings of some configuration keys have a mild dependency on the
+       exact deserializer, and certain keys are meaningless for certain deserializers.
+
+    Args:
+        field (str): this is either the name of the stream (ImageDeserializer, CTFDeserializer) or its main files (HTKDeserializers)
+        shape (int, tuple): dimensions of this stream. HTKDeserializers and CTFDeserializer read data
+         as flat arrays. If you need different shapes you can
+         :func:`~cntk.ops.reshape` it later.
+        is_sparse (bool, default `False`): whether the provided data is sparse
+         (`False` by default)
+        transforms (list): list of transforms to be applied by the Deserializer. Currently only ImageDeserializer supports transforms.
+        context (tuple): left and right context to consider when reading in HTK data
+        paths (list): additional paths that the Deserializer might need. 
+    '''
     config = dict(stream_alias=field, is_sparse=is_sparse)
     if shape is not None:
         config['dim'] = shape
