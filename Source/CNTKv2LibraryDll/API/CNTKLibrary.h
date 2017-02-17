@@ -4489,20 +4489,6 @@ namespace CNTK
 
     typedef Dictionary Deserializer;
 
-    /*
-    class Record
-    {
-    protected:
-        Dictionary m_config;
-
-    public:
-        DictionaryValue AsDictionaryValue() const { return DictionaryValue(m_config); }
-        DictionaryValue operator[](const std::wstring& key) const { return m_config[key]; }
-        virtual ~Record() {}
-    };
-    */
-
-
     /// 
     /// Create an ImageDeserializer with the specified options
     /// 

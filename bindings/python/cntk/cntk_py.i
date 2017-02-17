@@ -83,7 +83,6 @@
 %ignore CNTK::TrainingParameterSchedule::operator=;
 %ignore CNTK::TrainingParameterSchedule::operator[];
 
-%ignore CNTK::Record::operator[];
 
 // renaming overloads for TrainMinibatch and TestMinibatch that take a map 
 // of Variables and MinibatchData as their first parameter. If this is not done, 
@@ -563,7 +562,7 @@ public:
 
 %extend CNTK::Dictionary {
     PyObject* __getitem__(const wchar_t* key) {
-		PyObject *DictionaryValueToPy(const CNTK::DictionaryValue&);
+    PyObject *DictionaryValueToPy(const CNTK::DictionaryValue&);
         return DictionaryValueToPy((*($self))[key]);
     }
 
@@ -571,17 +570,17 @@ public:
         (*($self))[key] = value;
     }
 
-	PyObject* keys()
+    PyObject* keys()
     {
         PyObject* container = PyList_New(0);
-		for (auto var : (*($self)))
-		{
-			PyObject *item = PyUnicode_FromWideChar(var.first.c_str(), var.first.length());
-			// No error handling here, because the error will be passed directly to Python
-			PyList_Append(container, item);
-			Py_DECREF(item);
-		}
-		return container;
+        for (auto var : (*($self)))
+        {
+            PyObject *item = PyUnicode_FromWideChar(var.first.c_str(), var.first.length());
+            // No error handling here, because the error will be passed directly to Python
+            PyList_Append(container, item);
+            Py_DECREF(item);
+        }
+        return container;
     }
 }
 
