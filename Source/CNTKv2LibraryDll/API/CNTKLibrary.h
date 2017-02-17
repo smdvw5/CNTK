@@ -1395,13 +1395,13 @@ namespace CNTK
 
         CNTK_API void Add(const Dictionary& other);
 
-        void Add(const wchar_t* key, const DictionaryValue& value)
+        void Add(const std::wstring& key, const DictionaryValue& value)
         {
-            operator[](key) = value;
+            operator[](key.c_str()) = value;
         }
 
         template<typename... Args>
-        void Add(const wchar_t* key, const DictionaryValue& value, Args... args)
+        void Add(const std::wstring& key, const DictionaryValue& value, Args... args)
         {
             Add(key, value); //insert one
             Add(args...);    //recurse
@@ -4462,28 +4462,28 @@ namespace CNTK
     typedef Dictionary ImageTransform;
 
     /// 
-    /// Create a crop transform with the specified options
+    /// Create a crop transform with the specified options to be used with a reader
     /// 
-    CNTK_API ImageTransform Crop(const wchar_t* cropType = L"center",
+    CNTK_API ImageTransform ReaderCrop(const wchar_t* cropType = L"center",
         int cropSize = 0, float sideRatio = 0.0f, float areaRatio = 0.0f,
         float aspectRatio = 1.0f, const wchar_t* jitterType = L"none");
 
     /// 
-    /// Create a scale transform with the specified options
+    /// Create a scale transform with the specified options to be used with a reader
     /// 
-    CNTK_API ImageTransform Scale(int width,
+    CNTK_API ImageTransform ReaderScale(int width,
         int height, int channels, const wchar_t* interpolations = L"linear",
         const wchar_t* scaleMode = L"fill", int padValue = -1);
 
     /// 
-    /// Create a mean subtraction transform with the specified options
+    /// Create a mean subtraction transform with the specified options to be used with a reader
     /// 
-    CNTK_API ImageTransform Mean(const wchar_t* meanFile);
+    CNTK_API ImageTransform ReaderMean(const wchar_t* meanFile);
 
     /// 
-    /// Create a color transform with the specified options
+    /// Create a color transform with the specified options to be used with a reader
     /// 
-    CNTK_API ImageTransform Color(float brightnessRadius = 0.0f,
+    CNTK_API ImageTransform ReaderColor(float brightnessRadius = 0.0f,
         float contrastRadius = 0.0f, float saturationRadius = 0.0f);
 
 

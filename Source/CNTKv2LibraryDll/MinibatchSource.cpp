@@ -402,9 +402,7 @@ namespace CNTK
     {
         Deserializer img;
         std::vector<DictionaryValue> actualTransforms;
-        //TODO: make this work with implicit conversion 
         std::transform(transforms.begin(), transforms.end(), std::back_inserter(actualTransforms), [](ImageTransform t) { return static_cast<DictionaryValue>(t); });
-        //std::transform(transforms.begin(), transforms.end(), std::back_inserter(actualTransforms), [](ImageTransform t) { return t.AsDictionaryValue(); });
         Dictionary labeldim;
         labeldim[L"labelDim"] = numLabels;
         Dictionary xforms;

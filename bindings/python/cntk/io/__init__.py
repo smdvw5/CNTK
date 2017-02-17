@@ -342,14 +342,14 @@ def HTKFeatureDeserializer(streams):
         dimension = stream.dim
         if 'scp' not in stream: raise ValueError("No scp files specified for HTKFeatureDeserializer")
         scp_file = stream['scp']
-        if stream.stream_alias == "features":
-            left_context, right_context = stream.context if 'context' in stream else (0, 0)
-            expand = False
-        elif stream.stream_alias == "ivector":
+        if 'broadcast' in stream and stream['broadcast'] = True:
             left_context, right_context = (0, 0)
-            expand = True            
-        else: raise ValueError("HTKFeatureDeserializer only accepts streams named 'features' or 'ivector'")
-        feat.append(cntk_py.HTKFeatureConfiguration(stream_name, scp_file, dimension, left_context, right_context, expand))
+            broadcast = True
+        elif stream.stream_alias == "features":
+            left_context, right_context = stream.context if 'context' in stream else (0, 0)
+            broadcast = False
+        else: raise ValueError("HTKFeatureDeserializer only accepts streams named 'features' or streams that can be broadcast")
+        feat.append(cntk_py.HTKFeatureConfiguration(stream_name, scp_file, dimension, left_context, right_context, broadcast))
     if len(feat) == 0:
         raise ValueError("no feature streams found")
     return cntk_py.htk_feature_deserializer(feat)
@@ -362,8 +362,6 @@ def HTKMLFDeserializer(label_mapping_file, streams):
         label_mapping_file (str): path to the label mapping file
         streams: any dictionary-like object that contains a mapping from stream names
             to :class:`StreamDef` objects. Each StreamDef object configures an HTK deserializer.
-            If a stream name starts with "label" an HTKMLFDeserializer is used,
-            otherwise an HTKFeatureDeserializer is used.
     '''
     mlf = []
     if len(streams) != 1: raise ValueError("HTKMLFDeserializer only accepts a single stream")
@@ -415,10 +413,9 @@ def ImageDeserializer(filename, streams):
 
 def CTFDeserializer(filename, streams):
     '''
-    Configures the text reader that reads text-encoded files from a
-    file with lines of the form::
+    Configures the CNTK text-format reader that reads text-based files with lines of the form::
 
-        [Sequence_Id](Sample)+
+        [Sequence_Id] (Sample)+
 
     where::
 
@@ -453,7 +450,7 @@ class StreamConfiguration(cntk_py.StreamConfiguration):
 # stream definition for use in StreamDefs
 # returns a record { stream_alias, is_sparse, optional shape, optional transforms, optional context, optional scp, optional mlf }
 from cntk.utils import Record
-def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None, scp=None, mlf=None):
+def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None, scp=None, mlf=None, broadcast=None):
     '''
        Configuration of a stream for use with the builtin Deserializers.
        The meanings of some configuration keys have a mild dependency on the
@@ -461,19 +458,26 @@ def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None,
 
     Args:
         field (str): this is the name of the stream:
-         for CTFDeserializer the name is inside the CTF file,
-         for ImageDeserializer the acceptable names are `image` or `label`
-         for HTKFeatureDeserializers the acceptable names are `features` or `ivector`
-         for HTKMLFDeserializer the acceptable name is `labels`
-        shape (int, tuple): dimensions of this stream. HTKDeserializers and CTFDeserializer read data
+        
+         * for CTFDeserializer the name is inside the CTF file
+         * for ImageDeserializer the acceptable names are `image` or `label`
+         * for HTKFeatureDeserializers the acceptable names are `features` or anything with a broadcast field
+         * for HTKMLFDeserializer the only acceptable name is `labels`
+        
+        shape (int, tuple): dimensions of this stream. HTKFeatureDeserializer, 
+         HTKMLFDeserializer, and CTFDeserializer read data
          as flat arrays. If you need different shapes you can
          :func:`~cntk.ops.reshape` it later.
-        is_sparse (bool, default `False`): whether the provided data is sparse
-         (`False` by default)
-        transforms (list): list of transforms to be applied by the Deserializer. Currently only ImageDeserializer supports transforms.
-        context (tuple): left and right context to consider when reading in HTK data
+        is_sparse (bool): whether the provided data is sparse.
+         `False` by default, unless mlf is provided.
+        transforms (list): list of transforms to be applied by the Deserializer. 
+         Currently only ImageDeserializer supports transforms.
+        context (tuple): left and right context to consider when reading in HTK 
+         data. Only supported by HTKFeatureDeserializer.
         scp (str, list): scp files for HTK data
         mlf (str, list): mlf files for HTK data
+        broadcast (bool): whether the features in this stream should be 
+         broadcast to the whole sequence (useful in e.g. ivectors with HTK)
     '''
     config = dict(stream_alias=field, is_sparse=is_sparse)
     if shape is not None:
@@ -487,6 +491,8 @@ def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None,
     if mlf is not None:
         config['mlf'] = mlf
         config['is_sparse'] = True
+    if broadcast is not None:
+        config['broadcast'] = broadcast
     return Record(**config)
     # TODO: we should always use 'shape' unless it is always rank-1 or a single rank's dimension
     # TODO: dim should be inferred from the file, at least for dense

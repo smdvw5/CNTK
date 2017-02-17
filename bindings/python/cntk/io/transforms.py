@@ -53,7 +53,7 @@ def crop(crop_type='center', crop_size=0, side_ratio=0.0, area_ratio=0.0, aspect
     Returns:
         A dictionary-like object describing the crop transform
     '''
-    return cntk_py.crop(crop_type, crop_size, side_ratio,
+    return cntk_py.reader_crop(crop_type, crop_size, side_ratio,
         area_ratio, aspect_ratio, jitter_type)
 
 def scale(width, height, channels, interpolations='linear', scale_mode="fill", pad_value=-1):
@@ -76,7 +76,7 @@ def scale(width, height, channels, interpolations='linear', scale_mode="fill", p
     Returns:
         A dictionary-like object describing the scale transform
     '''
-    return cntk_py.scale(width, height, channels,
+    return cntk_py.reader_scale(width, height, channels,
             interpolations, scale_mode, pad_value)
 
 def mean(filename):
@@ -91,7 +91,7 @@ def mean(filename):
         dict:
         A dictionary-like object describing the mean transform
     '''
-    return cntk_py.mean(filename)
+    return cntk_py.reader_mean(filename)
 
 def color(brightness_radius=0.0, contrast_radius=0.0, saturation_radius=0.0):
     '''
@@ -115,7 +115,7 @@ def color(brightness_radius=0.0, contrast_radius=0.0, saturation_radius=0.0):
     Returns:
         A dictionary-like object describing the mean transform
     '''
-    return cntk_py.color(brightness_radius, contrast_radius, saturation_radius)
+    return cntk_py.reader_color(brightness_radius, contrast_radius, saturation_radius)
 
 #@staticmethod
 #def intensity(intensity_stddev, intensity_file):
