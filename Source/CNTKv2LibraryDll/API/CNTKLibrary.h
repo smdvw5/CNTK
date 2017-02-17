@@ -1395,6 +1395,18 @@ namespace CNTK
 
         CNTK_API void Add(const Dictionary& other);
 
+        void Add(const wchar_t* key, const DictionaryValue& value)
+        {
+            operator[](key) = value;
+        }
+
+        template<typename... Args>
+        void Add(const wchar_t* key, const DictionaryValue& value, Args... args)
+        {
+            Add(key, value); //insert one
+            Add(args...);    //recurse
+        }
+
         CNTK_API bool operator==(const Dictionary& other) const;
         CNTK_API bool operator!=(const Dictionary& other) const;
 
@@ -4388,6 +4400,20 @@ namespace CNTK
         std::wstring m_streamAlias;
     };
 
+    struct HTKFeatureConfiguration
+    {
+        HTKFeatureConfiguration(const std::wstring& streamName, const std::wstring& scp, size_t dim, size_t left, size_t right, bool expand)
+            : m_streamName(streamName), m_dim(dim), m_scp(scp), m_left(left), m_right(right), m_expand(expand)
+        {}
+
+        std::wstring m_streamName;
+        std::wstring m_scp;
+        size_t m_dim;
+        size_t m_left;
+        size_t m_right;
+        bool m_expand;
+    };
+
     /// 
     /// Instantiate the CNTK built-in text format minibatch source
     ///
@@ -4433,92 +4459,69 @@ namespace CNTK
         return CreateCompositeMinibatchSource(minibatchSourceConfiguration);
     }
 
+    typedef Dictionary ImageTransform;
+
+    /// 
+    /// Create a crop transform with the specified options
+    /// 
+    CNTK_API ImageTransform Crop(const wchar_t* cropType = L"center",
+        int cropSize = 0, float sideRatio = 0.0f, float areaRatio = 0.0f,
+        float aspectRatio = 1.0f, const wchar_t* jitterType = L"none");
+
+    /// 
+    /// Create a scale transform with the specified options
+    /// 
+    CNTK_API ImageTransform Scale(int width,
+        int height, int channels, const wchar_t* interpolations = L"linear",
+        const wchar_t* scaleMode = L"fill", int padValue = -1);
+
+    /// 
+    /// Create a mean subtraction transform with the specified options
+    /// 
+    CNTK_API ImageTransform Mean(const wchar_t* meanFile);
+
+    /// 
+    /// Create a color transform with the specified options
+    /// 
+    CNTK_API ImageTransform Color(float brightnessRadius = 0.0f,
+        float contrastRadius = 0.0f, float saturationRadius = 0.0f);
+
+
+    typedef Dictionary Deserializer;
+
+    /*
     class Record
     {
     protected:
         Dictionary m_config;
 
-        void AddConfig(const wchar_t* key, const DictionaryValue& value)
-        {
-            m_config[key] = value;
-        }
-
-        template<typename... Args>
-        void AddConfig(const wchar_t* key, const DictionaryValue& value, Args... args)
-        {
-            AddConfig(key, value); //insert one
-            AddConfig(args...);    //recurse
-        }
     public:
         DictionaryValue AsDictionaryValue() const { return DictionaryValue(m_config); }
         DictionaryValue operator[](const std::wstring& key) const { return m_config[key]; }
         virtual ~Record() {}
     };
+    */
+
 
     /// 
-    /// Encapsulates all the different transforms that can be applied to an image
+    /// Create an ImageDeserializer with the specified options
     /// 
-    class ImageTransform : public Record
-    {
-        ImageTransform() {};
-    public:
-        /// 
-        /// Create a crop transform with the specified options
-        /// 
-        CNTK_API static ImageTransform Crop(const wchar_t* cropType = L"center",
-            int cropSize = 0, float sideRatio = 0.0f, float areaRatio = 0.0f,
-            float aspectRatio = 1.0f, const wchar_t* jitterType = L"none");
-
-        /// 
-        /// Create a scale transform with the specified options
-        /// 
-        CNTK_API static ImageTransform Scale(int width,
-            int height, int channels, const wchar_t* interpolations = L"linear",
-            const wchar_t* scaleMode = L"fill", int padValue = -1);
-
-        /// 
-        /// Create a mean subtraction transform with the specified options
-        /// 
-        CNTK_API static ImageTransform Mean(const wchar_t* meanFile);
-
-        /// 
-        /// Create a color transform with the specified options
-        /// 
-        CNTK_API static ImageTransform Color(float brightnessRadius = 0.0f,
-            float contrastRadius = 0.0f, float saturationRadius = 0.0f);
-    };
+    CNTK_API  Deserializer ImageDeserializer(const std::wstring& fileName, const std::wstring& labelStreamName, size_t numLabels, const std::wstring& imageStreamName, const std::vector<ImageTransform>& transforms = {});
 
     /// 
-    /// Encapsulates the different deserializers that can be applied to an image
+    /// Create an CTFDeserializer with the specified options
     /// 
-    class Deserializer : public Record
-    {
-        Deserializer() {};
+    CNTK_API  Deserializer CTFDeserializer(const std::wstring& fileName, const std::vector<StreamConfiguration>& streams);
 
-    public:
-        /// 
-        /// Create an ImageDeserializer with the specified options
-        /// 
-        CNTK_API static Deserializer ImageDeserializer(const std::wstring& fileName, const std::wstring& labelStreamName, size_t numLabels, const std::wstring& imageStreamName, const std::vector<ImageTransform>& transforms = {});
+    /// 
+    /// Create an HTKFeatureDeserializer with the specified options
+    /// 
+    CNTK_API  Deserializer HTKFeatureDeserializer(const std::vector<HTKFeatureConfiguration>& streams);
 
-        /// 
-        /// Create an CTFDeserializer with the specified options
-        /// 
-        CNTK_API static Deserializer CTFDeserializer(const std::wstring& fileName, const std::vector<StreamConfiguration>& streams);
-
-
-        /// 
-        /// Create an HTKFeatureDeserializer with the specified options
-        /// 
-        CNTK_API static Deserializer HTKFeatureDeserializer(const std::wstring& streamName, const std::wstring& fileName, size_t dimension, size_t leftContextSize = 1, size_t rightContextSize = 1, const std::wstring& prefixPath = L"");
-
-        /// 
-        /// Create an HTKMLFDeserializer with the specified options
-        /// 
-        CNTK_API static Deserializer Deserializer::HTKMLFDeserializer(const std::wstring& streamName, const std::wstring& labelMappingFile, size_t dimension, const std::vector<std::wstring> mlfFiles);
-
-    };
-
+    /// 
+    /// Create an HTKMLFDeserializer with the specified options
+    /// 
+    CNTK_API  Deserializer HTKMLFDeserializer(const std::wstring& streamName, const std::wstring& labelMappingFile, size_t dimension, const std::vector<std::wstring>& mlfFiles);
 
     ///
     /// Compute the per dimension means and variances for each of the specified streams using data from the specified minibatchSource.

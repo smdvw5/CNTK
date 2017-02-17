@@ -251,9 +251,7 @@ def _py_dict_to_cntk_dict(py_dict):
             res[k] = cntk_py.DictionaryValueFromDict(_py_dict_to_cntk_dict(v))
         # TODO: add support to list of lists ?
         elif isinstance(v, list):
-            res[k] = cntk_py.DictionaryValue([
-                cntk_py.DictionaryValueFromDict(_py_dict_to_cntk_dict(e))
-                if isinstance(e, dict) else e.as_dictionary_value() for e in v])
+            res[k] = cntk_py.DictionaryValue([cntk_py.DictionaryValueFromDict(_py_dict_to_cntk_dict(e) if isinstance(e, dict) else e) for e in v])
         else:
             res[k] = cntk_py.DictionaryValue(v)
     return res
@@ -331,229 +329,53 @@ class ReaderConfig(dict):
         '''
         return minibatch_source(self)
 
-
-class HtkFeatureInfo(dict):
+def HTKFeatureDeserializer(streams):
     '''
-    A dictionary to store htk features info. Needs feature dim, scp file path
-    Eg see HTKFeatureDeserializer in https://github.com/Microsoft/CNTK/wiki/Understanding-and-Extending-Readers
-    '''
-
-    def __init__(self, dim, scp_file_path):
-        super(HtkFeatureInfo, self).__init__()
-        self['dim'] = dim
-        self['scpFile '] = scp_file_path
-
-class HTKFeatureDeserializer:
-    '''
-    This class configures an htk feature reader that reads speech HTK format scp(script) files.
-
-    This creates a dictionary of following structure
-    { "type" = "HTKFeatureDeserializer"
-      "module" = "HTKDeserializers"
-      "input" = {
-                "features " = {
-                    "dim" = 132
-                    "scpFile" = "$DataDir$/glob_0000.scp"
-                }
-            }
-    }
+    Configures the HTK feature reader that reads speech data from scp files.
 
     Args:
-        htk_feature_info(dict) :  a dictionary of type HtkFeatureInfo
+        streams: any dictionary-like object that contains a mapping from stream names
+            to :class:`StreamDef` objects. Each StreamDef object configures an features or ivector stream.
     '''
+    feat = []
+    for stream_name, stream in streams.items():
+        dimension = stream.dim
+        if 'scp' not in stream: raise ValueError("No scp files specified for HTKFeatureDeserializer")
+        scp_file = stream['scp']
+        if stream.stream_alias == "features":
+            left_context, right_context = stream.context if 'context' in stream else (0, 0)
+            expand = False
+        elif stream.stream_alias == "ivector":
+            left_context, right_context = (0, 0)
+            expand = True            
+        else: raise ValueError("HTKFeatureDeserializer only accepts streams named 'features' or 'ivector'")
+        feat.append(cntk_py.HTKFeatureConfiguration(stream_name, scp_file, dimension, left_context, right_context, expand))
+    if len(feat) == 0:
+        raise ValueError("no feature streams found")
+    return cntk_py.htk_feature_deserializer(feat)
 
-    def __init__(self, htk_feature_info):
-        super(HTKFeatureDeserializer, self).__init__('HTKFeatureDeserializer')
-        self['module'] = "HTKDeserializers"
-        self['input'] = self.input = {}
-
-        if htk_feature_info is not None:
-            feature_dict = dict(features=dict(htk_feature_info))
-            self['input'] = feature_dict
-
-class HtkMlfLabelInfo(dict):
+def HTKMLFDeserializer(label_mapping_file, streams):
     '''
-    A dictionary to store htk mlf label info. Needs label dim, htk label mlf file, htk label mapping file
-    Eg see HTKMLFDeserializer in https://github.com/Microsoft/CNTK/wiki/Understanding-and-Extending-Readers
-    '''
-
-    def __init__(self, dim, mlf_file_path, label_mapping_file_path):
-        super(HtkMlfLabelInfo, self).__init__()
-        self['dim'] = dim
-        self['mlfFile'] = mlf_file_path
-        self['labelMappingFile'] = label_mapping_file_path
-
-class HTKMLFDeserializer:
-    '''
-    This class configures an htk label reader that reads speech HTK format mlf(master label format) files.
-    This creates a dictionary of following structure
-    { "type" = "HTKMLFDeserializer"
-      "module" = "HTKDeserializers"
-      "input" = {
-
-                "labels" = {
-                    "dim" = 132
-                    "mlfFile" = "$DataDir$/glob_0000.mlf"
-                    "labelMappingFile" = "$DataDir$/state.list"
-                }
-            }
-    }
+    Configures an HTK label reader that reads speech HTK format MLF (Master Label File)
 
     Args:
-        htkmlf_label_info(dict) :  a dictionary of type HtkMlfLabelInfo
+        label_mapping_file (str): path to the label mapping file
+        streams: any dictionary-like object that contains a mapping from stream names
+            to :class:`StreamDef` objects. Each StreamDef object configures an HTK deserializer.
+            If a stream name starts with "label" an HTKMLFDeserializer is used,
+            otherwise an HTKFeatureDeserializer is used.
     '''
+    mlf = []
+    if len(streams) != 1: raise ValueError("HTKMLFDeserializer only accepts a single stream")
+    for stream_name, stream in streams.items():
+        dimension = stream.dim
+        if stream.stream_alias != "labels": raise ValueError("HTKMLFDeserializer only accepts a stream named 'labels'")
+        if 'mlf' not in stream: raise ValueError("No master label files specified for HTKMLFDeserializer")
+        master_label_files = stream['mlf']
+        if not isinstance(master_label_files,list):
+            master_label_files = [master_label_files]
+        return cntk_py.htk_mlf_deserializer(stream_name, label_mapping_file, dimension, master_label_files)
 
-    def __init__(self, htkmlf_label_info):
-        super(HTKMLFDeserializer, self).__init__('HTKMLFDeserializer')
-        self['module'] = "HTKDeserializers"
-        self['input'] = self.input = {}
-
-        if htkmlf_label_info is not None:
-            labelDict = dict(labels=dict(htkmlf_label_info))
-            self['input'] = labelDict
-
-
-
-class ImageTransofrm:
-    '''
-    This class acts as a namespace for various image transforms such as cropping
-    scaling mean subtraction etc.
-    '''
-
-    @staticmethod
-    def crop(crop_type='center', crop_size=0, side_ratio=0.0, area_ratio=0.0, aspect_ratio=1.0, jitter_type='none'):
-        '''
-        Crop transform that can be used to pass to `map_features`
-
-        Args:
-            crop_type (str, default 'center'): 'center', 'randomside', 'randomarea',
-              or 'multiview10'.  'randomside' and 'randomarea' are usually used during
-              training, while 'center' and 'multiview10' are usually used during testing.
-              Random cropping is a popular data augmentation technique used to improve
-              generalization of the DNN.
-            crop_size (`int`, default 0): crop size in pixels. Ignored if set to 0.
-              When crop_size is non-zero, for example, crop_size=256, it means a cropping
-              window of size 256x256 pixels will be taken. If one want to crop with
-              non-square shapes, specify crop_size=256:224 will crop 256x224 (width x height)
-              pixels. `When crop_size is specified, side_ratio, area_ratio and aspect_ratio
-              will be ignored.`
-            side_ratio (`float`, default 0.0): It specifies the ratio of final image
-              side (width or height) with respect to the original image. Ignored if set
-              to 0.0. Otherwise, must be set within `(0,1]`. For example, with an input
-              image size of 640x480, side_ratio of 0.5 means we crop a square region
-              (if aspect_ratio is 1.0) of the input image, whose width and height are
-              equal to 0.5*min(640, 480) = 240. To enable scale jitter (a popular data
-              augmentation technique), use colon-delimited values like side_ratio=0.5:0.75,
-              which means the crop will have size between 240 (0.5*min(640, 480)) and 360
-              (0.75*min(640, 480)).
-            area_ratio (`float`, default 0.0): It specifies the area ratio of final image
-              with respect to the original image. Ignored if set to 0.0. Otherwise, must be
-              set within `(0,1]`. For example, for an input image size of 200x150 pixels,
-              the area is 30,000. If area_ratio is 0.3333, we crop a square region (if
-              aspect_ratio is 1.0) with width and height equal to sqrt(30,000*0.3333)=100.
-              To enable scale jitter, use colon-delimited values such as area_ratio=0.3333:0.8,
-              which means the crop will have size between 100 (sqrt(30,000*0.3333)) and
-              155 (sqrt(30,000*0.8)).
-            aspect_ratio (`float`, default 1.0): It specifies the aspect ratio (width/height
-              or height/width) of the crop window. Must be set within `(0,1]`. For example,
-              if due to size_ratio the crop size is 240x240, an aspect_ratio of 0.64 will
-              change the window size to non-square: 192x300 or 300x192, each having 50%
-              chance. Note the area of the crop window does not change. To enable aspect
-              ratio jitter, use colon-delimited values such as aspect_ratio=0.64:1.0, which means
-              the crop will have size between 192x300 (or euqally likely 300x192) and 240x240.
-            jitter_type (str, default 'none'): crop scale jitter type, possible
-              values are 'none' and 'uniratio'. 'uniratio' means uniform distributed jitter
-              scale between the minimum and maximum ratio values.
-
-        Returns:
-            dict:
-            A `dict` describing the crop transform
-        '''
-        return cntk_py.ImageTransform_crop(crop_type, crop_size, side_ratio,
-            area_ratio, aspect_ratio, jitter_type)
-
-    @staticmethod
-    def scale(width, height, channels, interpolations='linear', scale_mode="fill", pad_value=-1):
-        '''
-        Scale transform that can be used to pass to `map_features` for data augmentation.
-
-        Args:
-            width (int): width of the image in pixels
-            height (int): height of the image in pixels
-            channels (int): channels of the image
-            interpolations (str, default 'linear'): possible values are
-              'nearest', 'linear', 'cubic', and 'lanczos'
-            scale_mode (str, default 'fill'): 'fill', 'crop' or 'pad'.
-              'fill' - warp the image to the given target size.
-              'crop' - resize the image's shorter side to the given target size and crop the overlap.
-              'pad'  - resize the image's larger side to the given target size, center it and pad the rest
-            pad_value (int, default -1): -1 or int value. The pad value used for the 'pad' mode.
-             If set to -1 then the border will be replicated.
-
-        Returns:
-            dict:
-            A `dict` describing the scale transform
-        '''
-        return cntk_py.ImageTransform_scale(width, height, channels,
-                interpolations, scale_mode, pad_value)
-
-    @staticmethod
-    def mean(filename):
-        '''
-        Mean transform that can be used to pass to `map_features` for data augmentation.
-
-        Args:
-            filename (str): file that stores the mean values for each pixel
-             in OpenCV matrix XML format
-
-        Returns:
-            dict:
-            A `dict` describing the mean transform
-        '''
-        return cntk_py.ImageTransform_mean(filename)
-
-    @staticmethod
-    def color(brightness_radius=0.0, contrast_radius=0.0, saturation_radius=0.0):
-        '''
-        Color transform that can be used to pass to `map_features` for data augmentation.
-
-        Args:
-            brightness_radius (float, default 0.0): Radius for brightness change. Must be
-              set within [0.0, 1.0]. For example, assume brightness_radius = 0.2, a random
-              number `x` is uniformly drawn from [-0.2, 0.2], and every pixel's value is
-              added by `x*meanVal`, where meanVal is the mean of the image pixel intensity
-              combining all color channels.
-            contrast_radius (float, default 0.0): Radius for contrast change. Must be
-              set within [0.0, 1.0]. For example, assume contrast_radius = 0.2, a random
-              number `x` is uniformly drawn from [-0.2, 0.2], and every pixel's value is
-              multiplied by `1+x`.
-            saturation_radius (float, default 0.0): Radius for saturation change. Only for
-              color images and must be set within [0.0, 1.0]. For example, assume
-              saturation_radius = 0.2, a random number `x` is uniformly drawn from [-0.2, 0.2],
-              and every pixel's saturation is multiplied by `1+x`.
-
-        Returns:
-            dict:
-            A `dict` describing the mean transform
-        '''
-        return cntk_py.ImageTransform_color(brightness_radius, contrast_radius, saturation_radius)
-
-    #@staticmethod
-    #def intensity(intensity_stddev, intensity_file):
-    #    '''
-    #    Intensity transform that can be used to pass to `map_features` for data augmentation.
-    #    Intensity jittering based on PCA transform as described in original `AlexNet paper
-    #    <http://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
-
-    #    Currently uses precomputed values from
-    #    https://github.com/facebook/fb.resnet.torch/blob/master/datasets/imagenet.lua
-
-    #    Args:
-    #        intensity_stddev (float): intensity standard deviation.
-    #        intensity_file (str): intensity file.
-    #    Returns:
-    #        dict describing the mean transform        '''
-    #    return dict(type='Intensity', intensityStdDev=intensity_stddev, intensityFile=intensity_file)
 
 def ImageDeserializer(filename, streams):
     '''
@@ -589,7 +411,7 @@ def ImageDeserializer(filename, streams):
             raise ValueError("ImageDeserializer: invalid field name '{}', allowed are 'image' and 'label'".format(alias))
     if image_stream_name is None:
         raise ValueError("ImageDeserializer: image stream name not specified")
-    return cntk_py.Deserializer_image_deserializer(filename, label_stream_name, num_labels, image_stream_name, transforms)
+    return cntk_py.image_deserializer(filename, label_stream_name, num_labels, image_stream_name, transforms)
 
 def CTFDeserializer(filename, streams):
     '''
@@ -609,38 +431,7 @@ def CTFDeserializer(filename, streams):
         `CNTKTextReader format <https://github.com/microsoft/cntk/wiki/CNTKTextFormat-Reader>`_
     '''
     sc = [cntk_py.StreamConfiguration(k, s.dim, s.is_sparse, s.stream_alias) for k,s in streams.items()]
-    return cntk_py.Deserializer_ctfdeserializer(filename, sc)
-
-def HTKDeserializers(label_mapping_file, streams):
-    '''
-    Configures the HTK reader that reads speech data in HTK format.
-
-    Args:
-        label_mapping_file (str): path to the label mapping file
-        streams: any dictionary-like object that contains a mapping from stream names
-            to :class:`StreamDef` objects. Each StreamDef object configures an HTK deserializer.
-            If a stream name starts with "label" an HTKMLFDeserializer is used,
-            otherwise an HTKFeatureDeserializer is used.
-    '''
-    feat = []
-    mlf = []
-    for stream_name, stream in streams.items():
-        dimension = stream.dim
-        if stream_name.startswith("label"):
-            files = tuple(stream.stream_alias)
-            label_mapping_file, master_label_files = files[0], files[1:]
-            mlf.append(cntk_py.Deserializer_htkmlfdeserializer(stream_name, label_mapping_file, dimension, master_label_files))
-        else:
-            scp_file = stream.stream_alias
-            left_context, right_context = stream.context if 'context' in stream else (0,0)
-            prefix_path = stream.paths[0] if 'paths' in stream else ''
-            feat.append(cntk_py.Deserializer_htkfeature_deserializer(stream_name, scp_file, dimension, left_context, right_context, prefix_path))
-    if len(mlf) == 0:
-        raise ValueError("no label streams found")
-    if len(feat) == 0:
-        raise ValueError("no feature streams found")
-    #Ensure MLF is at the end of the list of deserializers
-    return feat+mlf
+    return cntk_py.ctf_deserializer(filename, sc)
 
 # TODO: this should be a private class; use StreamDef instead
 class StreamConfiguration(cntk_py.StreamConfiguration):
@@ -660,16 +451,20 @@ class StreamConfiguration(cntk_py.StreamConfiguration):
         return super(StreamConfiguration, self).__init__(name, dim, is_sparse, stream_alias)
 
 # stream definition for use in StreamDefs
-# returns a record { stream_alias, is_sparse, optional dim, optional transforms }
+# returns a record { stream_alias, is_sparse, optional shape, optional transforms, optional context, optional scp, optional mlf }
 from cntk.utils import Record
-def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None, paths=None):
+def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None, scp=None, mlf=None):
     '''
        Configuration of a stream for use with the builtin Deserializers.
        The meanings of some configuration keys have a mild dependency on the
        exact deserializer, and certain keys are meaningless for certain deserializers.
 
     Args:
-        field (str): this is either the name of the stream (ImageDeserializer, CTFDeserializer) or its main files (HTKDeserializers)
+        field (str): this is the name of the stream:
+         for CTFDeserializer the name is inside the CTF file,
+         for ImageDeserializer the acceptable names are `image` or `label`
+         for HTKFeatureDeserializers the acceptable names are `features` or `ivector`
+         for HTKMLFDeserializer the acceptable name is `labels`
         shape (int, tuple): dimensions of this stream. HTKDeserializers and CTFDeserializer read data
          as flat arrays. If you need different shapes you can
          :func:`~cntk.ops.reshape` it later.
@@ -677,7 +472,8 @@ def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None,
          (`False` by default)
         transforms (list): list of transforms to be applied by the Deserializer. Currently only ImageDeserializer supports transforms.
         context (tuple): left and right context to consider when reading in HTK data
-        paths (list): additional paths that the Deserializer might need.
+        scp (str, list): scp files for HTK data
+        mlf (str, list): mlf files for HTK data
     '''
     config = dict(stream_alias=field, is_sparse=is_sparse)
     if shape is not None:
@@ -686,8 +482,11 @@ def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None,
         config['transforms'] = transforms
     if context is not None:
         config['context'] = context
-    if paths is not None:
-        config['paths'] = paths
+    if scp is not None:
+        config['scp'] = scp
+    if mlf is not None:
+        config['mlf'] = mlf
+        config['is_sparse'] = True
     return Record(**config)
     # TODO: we should always use 'shape' unless it is always rank-1 or a single rank's dimension
     # TODO: dim should be inferred from the file, at least for dense

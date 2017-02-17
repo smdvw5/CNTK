@@ -1,6 +1,6 @@
 import cntk as C
 import numpy as np
-from cntk.io import MinibatchSource, HTKDeserializers, StreamDef, StreamDefs
+from cntk.io import MinibatchSource, HTKFeatureDeserializer, HTKMLFDeserializer, StreamDef, StreamDefs
 from cntk.blocks import LSTM, Placeholder, Input
 from cntk.layers import Recurrence, Dense, BatchNormalization
 from cntk.models import Sequential, For
@@ -24,9 +24,13 @@ def test_htk_deserializers():
     labels_file = "glob_0000.mlf"
     label_mapping_file = "state.list"
 
-    reader = MinibatchSource(HTKDeserializers(label_mapping_file, StreamDefs(
-        features = StreamDef(features_file, shape=feature_dim, context=(context,context)),
-        labels   = StreamDef(labels_file,   shape=num_classes))))
+    fd = HTKFeatureDeserializer(StreamDefs(
+        amazing_features = StreamDef("features", shape=feature_dim, context=(context,context), scp=features_file)))
+
+    ld = HTKMLFDeserializer(label_mapping_file, StreamDefs(
+        awesome_labels = StreamDef("labels", shape=num_classes, mlf=labels_file)))
+
+    reader = MinibatchSource([fd,ld])
 
     features = C.input_variable(((2*context+1)*feature_dim))
     labels = C.input_variable((num_classes))
@@ -45,7 +49,7 @@ def test_htk_deserializers():
                     gradient_clipping_threshold_per_sample=15, gradient_clipping_with_truncation=True)
     trainer = C.Trainer(z, (ce, errs), learner)
 
-    input_map={ features: reader.streams.features, labels: reader.streams.labels }
+    input_map={ features: reader.streams.amazing_features, labels: reader.streams.awesome_labels }
 
     pp = C.ProgressPrinter(freq=0)
     # just run and verify it doesn't crash
@@ -53,6 +57,7 @@ def test_htk_deserializers():
         mb_data = reader.next_minibatch(mbsize, input_map=input_map)
         trainer.train_minibatch(mb_data)
         pp.update_with_trainer(trainer, with_metric=True)
+    assert True
     os.chdir(abs_path)
 
-test_htk_deserializers()
+#test_htk_deserializers()

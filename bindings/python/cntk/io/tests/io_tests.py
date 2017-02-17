@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from cntk.io import *
+import cntk.io.transforms as xforms
 
 abs_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -93,9 +94,9 @@ def test_image():
     label_name = "l"
     num_classes = 7
 
-    transforms = [ImageTransofrm.crop(crop_type='randomside', side_ratio=0.5, jitter_type='uniratio'),
-        ImageTransofrm.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
-        ImageTransofrm.mean(mean_file)]
+    transforms = [xforms.crop(crop_type='randomside', side_ratio=0.5, jitter_type='uniratio'),
+        xforms.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
+        xforms.mean(mean_file)]
     image = ImageDeserializer(map_file, StreamDefs(f = StreamDef(field='image', transforms=transforms), l = StreamDef(field='label', shape=num_classes)))
 
     rc = ReaderConfig(image, randomize=False, epoch_size=epoch_size)

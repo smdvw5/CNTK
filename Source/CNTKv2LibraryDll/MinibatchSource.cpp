@@ -350,12 +350,12 @@ namespace CNTK
         m_prevMinibatchSize = 0;
     }
 
-    /* static */ ImageTransform ImageTransform::Crop(const wchar_t* cropType,
+    /* static */ ImageTransform CNTK::Crop(const wchar_t* cropType,
             int cropSize, float sideRatio, float areaRatio,
             float aspectRatio, const wchar_t* jitterType)
     {
         ImageTransform crop;
-        crop.AddConfig(L"type", L"Crop",
+        crop.Add(L"type", L"Crop",
             L"cropType", cropType,
             L"cropSize", cropSize,
             L"sideRatio", sideRatio,
@@ -365,12 +365,12 @@ namespace CNTK
         return crop;
     }
 
-    /* static */ ImageTransform ImageTransform::Scale(int width,
+    /* static */ ImageTransform CNTK::Scale(int width,
             int height, int channels, const wchar_t* interpolations,
             const wchar_t* scaleMode, int padValue)
     {
         ImageTransform scale;
-        scale.AddConfig(L"type", L"Scale",
+        scale.Add(L"type", L"Scale",
             L"width", width,
             L"height", height,
             L"channels", channels,
@@ -380,43 +380,42 @@ namespace CNTK
         return scale;
     }
 
-    /* static */ ImageTransform ImageTransform::Mean(const wchar_t* meanFile)
+    /* static */ ImageTransform CNTK::Mean(const wchar_t* meanFile)
     {
         ImageTransform mean;
-        mean.AddConfig(L"type", L"Mean", L"meanFile", meanFile);
+        mean.Add(L"type", L"Mean", L"meanFile", meanFile);
         return mean;
     }
 
-    /* static */ ImageTransform ImageTransform::Color(float brightnessRadius,
+    /* static */ ImageTransform CNTK::Color(float brightnessRadius,
             float contrastRadius, float saturationRadius)
     {
         ImageTransform color;
-        color.AddConfig(L"type", L"Color",
+        color.Add(L"type", L"Color",
             L"brightnessRadius", brightnessRadius,
             L"contrastRadius", contrastRadius,
             L"saturationRadius", saturationRadius);
         return color;
     }
 
-    /* static */ Deserializer Deserializer::ImageDeserializer(const std::wstring& fileName, const std::wstring& labelStreamName, size_t numLabels, const std::wstring& imageStreamName, const std::vector<ImageTransform>& transforms)
+    Deserializer CNTK::ImageDeserializer(const std::wstring& fileName, const std::wstring& labelStreamName, size_t numLabels, const std::wstring& imageStreamName, const std::vector<ImageTransform>& transforms)
     {
         Deserializer img;
         std::vector<DictionaryValue> actualTransforms;
         //TODO: make this work with implicit conversion 
-        //std::transform(transforms.begin(), transforms.end(), std::back_inserter(actualTransforms), [](ImageTransform t) { return static_cast<DictionaryValue>(t); });
-        std::transform(transforms.begin(), transforms.end(), std::back_inserter(actualTransforms), [](ImageTransform t) { return t.AsDictionaryValue(); });
+        std::transform(transforms.begin(), transforms.end(), std::back_inserter(actualTransforms), [](ImageTransform t) { return static_cast<DictionaryValue>(t); });
+        //std::transform(transforms.begin(), transforms.end(), std::back_inserter(actualTransforms), [](ImageTransform t) { return t.AsDictionaryValue(); });
         Dictionary labeldim;
         labeldim[L"labelDim"] = numLabels;
         Dictionary xforms;
         xforms[L"transforms"] = actualTransforms;
         Dictionary input;
-        input[imageStreamName] = xforms;
-        input[labelStreamName] = labeldim;
-        img.AddConfig(L"type", L"ImageDeserializer", L"file", fileName, L"input", input);
+        input.Add(imageStreamName.c_str(), xforms, labelStreamName.c_str(), labeldim);
+        img.Add(L"type", L"ImageDeserializer", L"file", fileName, L"input", input);
         return img;
     }
 
-    /* static */ Deserializer Deserializer::CTFDeserializer(const std::wstring& fileName, const std::vector<StreamConfiguration>& streams)
+    Deserializer CNTK::CTFDeserializer(const std::wstring& fileName, const std::vector<StreamConfiguration>& streams)
     {
         Deserializer ctf;
         Dictionary input;
@@ -424,38 +423,35 @@ namespace CNTK
         {
             const auto& key = s.m_streamName;
             Dictionary stream;
-            stream[L"alias"] = s.m_streamAlias;
-            stream[L"dim"] = s.m_dim;
-            stream[L"format"] = s.m_isSparse ? L"sparse" : L"dense";
+            stream.Add(L"alias", s.m_streamAlias, L"dim", s.m_dim, L"format", s.m_isSparse ? L"sparse" : L"dense");
             input[key] = stream;
         }
-        ctf.AddConfig(L"type", L"CNTKTextFormatDeserializer", L"file", fileName, L"input", input);
+        ctf.Add(L"type", L"CNTKTextFormatDeserializer", L"file", fileName, L"input", input);
         return ctf;
     }
 
-    /* static */ Deserializer Deserializer::HTKFeatureDeserializer(const std::wstring& streamName, const std::wstring& fileName, size_t dimension, size_t leftContextSize, size_t rightContextSize, const std::wstring& prefixPath)
+    Deserializer CNTK::HTKFeatureDeserializer(const std::vector<HTKFeatureConfiguration>& streams)
     {
         Deserializer htk;
-        Dictionary stream;
-        Dictionary features;
-        std::vector<DictionaryValue> ctxWindow = { DictionaryValue(leftContextSize), DictionaryValue(rightContextSize) };
-        features[L"scpFile"] = fileName;
-        features[L"dim"] = dimension;
-        features[L"contextWindow"] = ctxWindow;
-        if (prefixPath.size() != 0)
-            features[L"prefixPathInSCP"] = prefixPath;
-        stream[streamName] = features;
-        htk.AddConfig(L"type", L"HTKFeatureDeserializer", L"input", stream);
+        Dictionary input;
+        for (const auto& s : streams)
+        {
+            const auto& key = s.m_streamName;
+            Dictionary stream;
+            std::vector<DictionaryValue> ctxWindow = { DictionaryValue(s.m_left), DictionaryValue(s.m_right) };
+            stream.Add(L"scpFile", s.m_scp, L"dim", s.m_dim, L"contextWindow", ctxWindow, L"expandToUtterance", s.m_expand);
+            input[key] = stream;
+        }
+        htk.Add(L"type", L"HTKFeatureDeserializer", L"input", input);
         return htk;
     }
 
-    /* static */ Deserializer Deserializer::HTKMLFDeserializer(const std::wstring& streamName, const std::wstring& labelMappingFile, size_t dimension, const std::vector<std::wstring> mlfFiles)
+    Deserializer CNTK::HTKMLFDeserializer(const std::wstring& streamName, const std::wstring& labelMappingFile, size_t dimension, const std::vector<std::wstring>& mlfFiles)
     {
         Deserializer htk;
         Dictionary stream;
         Dictionary labels;
-        labels[L"labelMappingFile"] = labelMappingFile;
-        labels[L"dim"] = dimension;
+        labels.Add(L"labelMappingFile", labelMappingFile, L"dim", dimension);
         std::vector<DictionaryValue> actualFiles;
         std::transform(mlfFiles.begin(), mlfFiles.end(), std::back_inserter(actualFiles), [](const std::wstring& s) {return static_cast<DictionaryValue>(s); });
         if (actualFiles.size() > 1)
@@ -465,7 +461,7 @@ namespace CNTK
         else
             LogicError("HTKMLFDeserializer: No mlf files were specified");
         stream[streamName] = labels;
-        htk.AddConfig(L"type", L"HTKMLFDeserializer", L"input", stream);
+        htk.Add(L"type", L"HTKMLFDeserializer", L"input", stream);
         return htk;
     }
 }
