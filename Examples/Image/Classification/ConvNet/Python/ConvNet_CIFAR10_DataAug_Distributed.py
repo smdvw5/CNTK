@@ -11,6 +11,7 @@ import argparse
 import numpy as np
 import cntk
 import _cntk_py
+import cntk.io.transforms as xforms
 
 # default Paths relative to current python file.
 abs_path   = os.path.dirname(os.path.abspath(__file__))
@@ -32,12 +33,12 @@ def create_image_mb_source(map_file, mean_file, train, total_number_of_samples):
     transforms = []
     if train:
         transforms += [
-            cntk.io.ImageTransform.crop(crop_type='randomside', side_ratio=0.8, jitter_type='uniratio') # train uses jitter
+            xforms.crop(crop_type='randomside', side_ratio=0.8, jitter_type='uniratio') # train uses jitter
         ]
 
     transforms += [
-        cntk.io.ImageTransform.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
-        cntk.io.ImageTransform.mean(mean_file)
+        xforms.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
+        xforms.mean(mean_file)
     ]
 
     # deserializer

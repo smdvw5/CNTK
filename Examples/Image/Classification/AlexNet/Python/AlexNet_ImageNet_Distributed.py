@@ -15,7 +15,8 @@ import _cntk_py
 from cntk.utils import *
 from cntk.ops import *
 from cntk.distributed import data_parallel_distributed_learner, Communicator
-from cntk.io import ImageDeserializer, ImageTransform, MinibatchSource, StreamDef, StreamDefs, FULL_DATA_SWEEP
+from cntk.io import ImageDeserializer, MinibatchSource, StreamDef, StreamDefs, FULL_DATA_SWEEP
+import cntk.io.transforms as xforms
 from cntk.layers import Placeholder, Block, Convolution2D, Activation, MaxPooling, Dense, Dropout, default_options, Sequential
 from cntk.initializer import normal
 
@@ -41,15 +42,15 @@ def create_image_mb_source(map_file, is_training, total_number_of_samples):
     transforms = []
     if is_training:
         transforms += [
-            ImageTransform.crop(crop_type='randomside', side_ratio=0.88671875, jitter_type='uniratio') # train uses jitter
+            xforms.crop(crop_type='randomside', side_ratio=0.88671875, jitter_type='uniratio') # train uses jitter
         ]
     else:
         transforms += [
-            ImageTransform.crop(crop_type='center', side_ratio=0.88671875) # test has no jitter
+            xforms.crop(crop_type='center', side_ratio=0.88671875) # test has no jitter
         ]
 
     transforms += [
-        ImageTransform.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
+        xforms.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
     ]
 
     # deserializer

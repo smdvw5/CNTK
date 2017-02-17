@@ -11,10 +11,10 @@ from cntk import load_model, graph
 from cntk.ops import combine
 from cntk import graph
 from cntk.graph import get_node_outputs
-
+import cntk.io.transforms as xforms
 
 def create_mb_source(image_height, image_width, num_channels, map_file):
-    transforms = [ImageTransform.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear')]
+    transforms = [xforms.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear')]
     return MinibatchSource(ImageDeserializer(map_file,
         StreamDefs(features=StreamDef(field='image', transforms=transforms))), # first column  in map file is referred to as 'image'
         randomize=False)                                                       # second column is labels and is ignored

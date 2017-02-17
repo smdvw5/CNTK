@@ -12,7 +12,8 @@ import numpy as np
 
 from cntk.utils import *
 from cntk.ops import input_variable, cross_entropy_with_softmax, classification_error
-from cntk.io import MinibatchSource, ImageDeserializer, ImageTransform, StreamDef, StreamDefs
+from cntk.io import MinibatchSource, ImageDeserializer, StreamDef, StreamDefs
+import cntk.io.transforms as xforms
 from cntk import Trainer, cntk_py
 from cntk.learner import momentum_sgd, learning_rate_schedule, momentum_as_time_constant_schedule, UnitType
 from _cntk_py import set_computation_network_trace_level
@@ -40,11 +41,11 @@ def create_reader(map_file, mean_file, train):
     transforms = []
     if train:
         transforms += [
-            ImageTransform.crop(crop_type='randomside', side_ratio=0.8, jitter_type='uniratio') # train uses jitter
+            xforms.crop(crop_type='randomside', side_ratio=0.8, jitter_type='uniratio') # train uses jitter
         ]
     transforms += [
-        ImageTransform.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
-        ImageTransform.mean(mean_file)
+        xforms.scale(width=image_width, height=image_height, channels=num_channels, interpolations='linear'),
+        xforms.mean(mean_file)
     ]
     # deserializer
     return MinibatchSource(ImageDeserializer(map_file, StreamDefs(
