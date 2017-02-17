@@ -2747,7 +2747,7 @@ namespace CNTK
 
         ///
         /// Returns the root of the Function graph underlying this block Function.
-        /// Throws an exception ff this is not a block Function
+        /// Throws an exception of this is not a block Function
         ///
         CNTK_API FunctionPtr BlockRoot() const;
 
