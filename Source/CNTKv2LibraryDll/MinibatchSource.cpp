@@ -350,7 +350,7 @@ namespace CNTK
         m_prevMinibatchSize = 0;
     }
 
-    /* static */ ImageTransform CNTK::Crop(const wchar_t* cropType,
+    /* static */ ImageTransform CNTK::ReaderCrop(const wchar_t* cropType,
             int cropSize, float sideRatio, float areaRatio,
             float aspectRatio, const wchar_t* jitterType)
     {
@@ -365,7 +365,7 @@ namespace CNTK
         return crop;
     }
 
-    /* static */ ImageTransform CNTK::Scale(int width,
+    /* static */ ImageTransform CNTK::ReaderScale(int width,
             int height, int channels, const wchar_t* interpolations,
             const wchar_t* scaleMode, int padValue)
     {
@@ -380,14 +380,14 @@ namespace CNTK
         return scale;
     }
 
-    /* static */ ImageTransform CNTK::Mean(const wchar_t* meanFile)
+    /* static */ ImageTransform CNTK::ReaderMean(const wchar_t* meanFile)
     {
         ImageTransform mean;
         mean.Add(L"type", L"Mean", L"meanFile", meanFile);
         return mean;
     }
 
-    /* static */ ImageTransform CNTK::Color(float brightnessRadius,
+    /* static */ ImageTransform CNTK::ReaderColor(float brightnessRadius,
             float contrastRadius, float saturationRadius)
     {
         ImageTransform color;
