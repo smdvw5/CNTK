@@ -53,7 +53,7 @@ if __name__=='__main__':
     output_dir = args['output_dir']
 
     if not output_dir:
-        output_dir = os.path.abspath(__file__)
+        output_dir = os.path.dirname(os.path.abspath(__file__))
 
     train_language_understanding_atis_for_eval(output_dir)
     train_cifar_resnet_for_eval(output_dir)
