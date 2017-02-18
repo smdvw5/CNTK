@@ -108,7 +108,8 @@ def train(reader, model, max_epochs, model_dir=None):
             trainer.train_minibatch(data)                                   # update model with it
             t += trainer.previous_minibatch_sample_count                    # count samples processed so far
             progress_printer.update_with_trainer(trainer, with_metric=True) # log progress
-            z.save(os.path.join(model_dir, "atis" + "_{}.dnn".format(epoch))) 
+			if model_dir:
+                z.save(os.path.join(model_dir, "atis" + "_{}.dnn".format(epoch))) 
 
             #def trace_node(name):
             #    nl = [n for n in z.parameters if n.name() == name]
