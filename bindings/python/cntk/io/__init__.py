@@ -335,20 +335,16 @@ def HTKFeatureDeserializer(streams):
 
     Args:
         streams: any dictionary-like object that contains a mapping from stream names
-            to :class:`StreamDef` objects. Each StreamDef object configures an features or ivector stream.
+            to :class:`StreamDef` objects. Each StreamDef object configures a feature stream.
     '''
     feat = []
     for stream_name, stream in streams.items():
-        dimension = stream.dim
+        if stream.stream_alias is not None: raise ValueError("HTKFeatureDeserializer does not support steam names")
         if 'scp' not in stream: raise ValueError("No scp files specified for HTKFeatureDeserializer")
+        dimension = stream.dim
         scp_file = stream['scp']
-        if 'broadcast' in stream and stream['broadcast'] = True:
-            left_context, right_context = (0, 0)
-            broadcast = True
-        elif stream.stream_alias == "features":
-            left_context, right_context = stream.context if 'context' in stream else (0, 0)
-            broadcast = False
-        else: raise ValueError("HTKFeatureDeserializer only accepts streams named 'features' or streams that can be broadcast")
+        broadcast = stream['broadcast'] if 'broadcast' in stream else False
+        left_context, right_context = stream.context if 'context' in stream else (0, 0)
         feat.append(cntk_py.HTKFeatureConfiguration(stream_name, scp_file, dimension, left_context, right_context, broadcast))
     if len(feat) == 0:
         raise ValueError("no feature streams found")
@@ -361,13 +357,12 @@ def HTKMLFDeserializer(label_mapping_file, streams):
     Args:
         label_mapping_file (str): path to the label mapping file
         streams: any dictionary-like object that contains a mapping from stream names
-            to :class:`StreamDef` objects. Each StreamDef object configures an HTK deserializer.
+            to :class:`StreamDef` objects. Each StreamDef object configures a label stream.
     '''
-    mlf = []
     if len(streams) != 1: raise ValueError("HTKMLFDeserializer only accepts a single stream")
     for stream_name, stream in streams.items():
+        if stream.stream_alias is not None: raise ValueError("HTKMLFDeserializer does not support steam names")
         dimension = stream.dim
-        if stream.stream_alias != "labels": raise ValueError("HTKMLFDeserializer only accepts a stream named 'labels'")
         if 'mlf' not in stream: raise ValueError("No master label files specified for HTKMLFDeserializer")
         master_label_files = stream['mlf']
         if not isinstance(master_label_files,list):
@@ -408,7 +403,7 @@ def ImageDeserializer(filename, streams):
         else:
             raise ValueError("ImageDeserializer: invalid field name '{}', allowed are 'image' and 'label'".format(alias))
     if image_stream_name is None:
-        raise ValueError("ImageDeserializer: image stream name not specified")
+        raise ValueError("ImageDeserializer: stream name ('image' or 'label') must be specified")
     return cntk_py.image_deserializer(filename, label_stream_name, num_labels, image_stream_name, transforms)
 
 def CTFDeserializer(filename, streams):
@@ -427,6 +422,9 @@ def CTFDeserializer(filename, streams):
     See also:
         `CNTKTextReader format <https://github.com/microsoft/cntk/wiki/CNTKTextFormat-Reader>`_
     '''
+    for k,s in streams.items():
+        if s.stream_alias is None:
+            raise ValueError("CTFDeserializer: stream name for key %s must be specified"%(k))
     sc = [cntk_py.StreamConfiguration(k, s.dim, s.is_sparse, s.stream_alias) for k,s in streams.items()]
     return cntk_py.ctf_deserializer(filename, sc)
 
@@ -450,7 +448,7 @@ class StreamConfiguration(cntk_py.StreamConfiguration):
 # stream definition for use in StreamDefs
 # returns a record { stream_alias, is_sparse, optional shape, optional transforms, optional context, optional scp, optional mlf }
 from cntk.utils import Record
-def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None, scp=None, mlf=None, broadcast=None):
+def StreamDef(field=None, shape=None, is_sparse=False, transforms=None, context=None, scp=None, mlf=None, broadcast=None):
     '''
        Configuration of a stream for use with the builtin Deserializers.
        The meanings of some configuration keys have a mild dependency on the
@@ -461,8 +459,8 @@ def StreamDef(field, shape=None, is_sparse=False, transforms=None, context=None,
         
          * for CTFDeserializer the name is inside the CTF file
          * for ImageDeserializer the acceptable names are `image` or `label`
-         * for HTKFeatureDeserializers the acceptable names are `features` or anything with a broadcast field
-         * for HTKMLFDeserializer the only acceptable name is `labels`
+         * for HTKFeatureDeserializer and HTKMLFDeserializer only the default 
+           value of None is acceptable
         
         shape (int, tuple): dimensions of this stream. HTKFeatureDeserializer, 
          HTKMLFDeserializer, and CTFDeserializer read data

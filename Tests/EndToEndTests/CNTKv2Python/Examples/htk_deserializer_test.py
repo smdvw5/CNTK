@@ -25,10 +25,10 @@ def test_htk_deserializers():
     label_mapping_file = "state.list"
 
     fd = HTKFeatureDeserializer(StreamDefs(
-        amazing_features = StreamDef("features", shape=feature_dim, context=(context,context), scp=features_file)))
+        amazing_features = StreamDef(shape=feature_dim, context=(context,context), scp=features_file)))
 
     ld = HTKMLFDeserializer(label_mapping_file, StreamDefs(
-        awesome_labels = StreamDef("labels", shape=num_classes, mlf=labels_file)))
+        awesome_labels = StreamDef(shape=num_classes, mlf=labels_file)))
 
     reader = MinibatchSource([fd,ld])
 
