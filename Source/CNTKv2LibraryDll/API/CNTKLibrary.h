@@ -4402,8 +4402,8 @@ namespace CNTK
 
     struct HTKFeatureConfiguration
     {
-        HTKFeatureConfiguration(const std::wstring& streamName, const std::wstring& scp, size_t dim, size_t left, size_t right, bool expand)
-            : m_streamName(streamName), m_dim(dim), m_scp(scp), m_left(left), m_right(right), m_expand(expand)
+        HTKFeatureConfiguration(const std::wstring& streamName, const std::wstring& scp, size_t dim, size_t left, size_t right, bool broadcast)
+            : m_streamName(streamName), m_dim(dim), m_scp(scp), m_left(left), m_right(right), m_broadcast(broadcast)
         {}
 
         std::wstring m_streamName;
@@ -4411,7 +4411,7 @@ namespace CNTK
         size_t m_dim;
         size_t m_left;
         size_t m_right;
-        bool m_expand;
+        bool m_broadcast;
     };
 
     /// 
