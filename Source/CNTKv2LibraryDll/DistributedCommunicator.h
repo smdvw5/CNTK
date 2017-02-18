@@ -120,5 +120,10 @@ namespace CNTK
         std::unique_ptr<Microsoft::MSR::CNTK::Matrix<ElemType>> setContinousBuffer(std::vector<size_t>& packedGradientsIndex, size_t packedGradientsSizeInBytes,
             const std::vector<NDArrayViewPtr>& inputValues, const std::vector<NDArrayViewPtr>& outputValues,
             std::vector<NDArrayViewPtr>& valuesToAggregate, std::vector<NDArrayViewPtr>& valuesAfterAggregate);
+
+        template <typename ElemType>
+        void packToContinousBuffer(std::unique_ptr<Microsoft::MSR::CNTK::Matrix<ElemType>> aggregationBuffer, std::vector<size_t>& packedGradientsIndex,
+            const std::vector<NDArrayViewPtr>& inputValues, const std::vector<NDArrayViewPtr>& outputValues,
+            std::vector<NDArrayViewPtr>& valuesToAggregate, std::vector<NDArrayViewPtr>& valuesAfterAggregate);
     };
 }
